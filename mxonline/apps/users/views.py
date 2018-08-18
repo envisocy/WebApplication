@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth import authenticate, login    # 认证库，登陆函数
 from django.contrib.auth.backends import ModelBackend
-from .models import UserProfile
+from .models import UserProfile, EmailVerifyRecord
 from django.db.models import Q
 
 from django.views.generic.base import View
@@ -33,8 +33,11 @@ class LoginView(View):
 			user = authenticate(username=user_name, password=pass_word)
 			# 如果验证成功user是个对象，如果失败则为None
 			if user is not None:
-				login(request, user)    # 登陆
-				return render(request, "index.html")        # 判断
+				if user.is_active:
+					login(request, user)
+					return render(request, "index.html")
+				else:
+					return render(request, "login.html", {"msg": "用户未激活！"})
 			else:
 				return render(request, "login.html", {"msg": "用户名或密码错误"})   # 数据库验证不通过
 		else:
@@ -55,12 +58,30 @@ class RegisterView(View):
 			user_profile.username = user_name
 			user_profile.email = user_name
 			user_profile.password = make_password(pass_word)
+			user_profile.is_active = False
 			user_profile.save()
 			# 发送邮件
 			send_register_email(user_name, "register")
-			return render(request, "index.html")
+			# 返回login界面
+			return render(request, "login.html")
 		else:
 			return render(request, "register.html", {'register_form': register_form})
+
+
+class ActiveUserView(View):
+	def get(self, request, active_code):
+		all_records = EmailVerifyRecord.objects.filter(code=active_code)
+		# active_form = ActiveForm(request.GET)
+		if all_records:
+			for record in all_records:
+				email = record.email
+				user = UserProfile.objects.get(email=email)
+				user.is_active = True
+				user.save()
+				return render(request, "login.html")
+		else:
+			return render(request, "register.html", {"msg": "您的激活链接无效"})
+
 
 # Create your views here.
 
