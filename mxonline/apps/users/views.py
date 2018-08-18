@@ -5,7 +5,7 @@ from .models import UserProfile, EmailVerifyRecord
 from django.db.models import Q
 
 from django.views.generic.base import View
-from .forms import LoginForm, RegisterForm
+from .forms import LoginForm, RegisterForm, ForgetForm, ModifyPwdFrom
 from django.contrib.auth.hashers import make_password   # 对明文进行密码加密
 from utils.email_send import send_register_email
 
@@ -23,7 +23,8 @@ class CustomBackend(ModelBackend):
 class LoginView(View):
 	# 继承后，get,post等函数可以直接使用，通过as_view()方法被urls引用
 	def get(self, request):
-		return render(request, "login.html", {})
+		login_form = LoginForm()
+		return render(request, "login.html", {"login_form": login_form})
 	
 	def post(self, request):
 		login_form = LoginForm(request.POST)        # 表单校验，html名称与form的名称一致
@@ -37,9 +38,9 @@ class LoginView(View):
 					login(request, user)
 					return render(request, "index.html")
 				else:
-					return render(request, "login.html", {"msg": "用户未激活！"})
+					return render(request, "login.html", {"msg": "用户未激活！", "login_form": login_form})
 			else:
-				return render(request, "login.html", {"msg": "用户名或密码错误"})   # 数据库验证不通过
+				return render(request, "login.html", {"msg": "用户名或密码错误", "login_form": login_form})   # 数据库验证不通过
 		else:
 			return render(request, "login.html", {"login_form": login_form})    # 登陆不成功
 			# 通过这样的方式，将login_form输出到前端，通过前端对login_form.errors的遍历循环，取出key和error
@@ -86,6 +87,49 @@ class ActiveUserView(View):
 			return render(request, "register.html", {"msg": "您的激活链接无效"})
 
 
+class ForgetPwdView(View):
+	def get(self, request):
+		forget_form = ForgetForm
+		return render(request, "forgetpwd.html", {"forget_form": forget_form})
+	
+	def post(self, request):
+		forget_form = ForgetForm(request.POST)
+		if forget_form.is_valid():
+			email = request.POST.get("email", "")
+			send_register_email(email, "forget")
+			return render(request, "send_success.html")
+		else:
+			return render(request, "forgetpwd.html", {"forget_form": forget_form})
+
+
+class ResetView(View):
+	def get(self, request, active_code):
+		all_records = EmailVerifyRecord.objects.filter(code=active_code)
+		if all_records:
+			for record in all_records:
+				email = record.email
+				return render(request, "password_reset.html", {"email": email}) # 需要传送email值，待下个页面传回
+		else:
+			return render(request, "forgetpwd.html", {"msg": "您的激活链接无效"})
+		
+		
+class ModifyPwdView(View):
+	def post(self, request):
+		modifypwd_form = ModifyPwdFrom(request.POST)
+		if modifypwd_form.is_valid():
+			pwd1 = request.POST.get("password1", "")
+			pwd2 = request.POST.get("password2", "")
+			email = request.POST.get("email", "")
+			if pwd1 != pwd2:
+				return render(request, "password_reset.html", {"email": email, "msg": "两次输入密码不一致"})
+			user = UserProfile.objects.get(email=email)
+			user.password = make_password(pwd2)
+			user.save()
+			return render(request, "login.html", {"msg": "密码修改成功，请登录"})
+		else:
+			email = request.POST.get("email", "")
+			return render(request, "password_reset.html", {"email": email, "modifypwd_form": modifypwd_form})
+		
 # Create your views here.
 
 # def user_login(request):
