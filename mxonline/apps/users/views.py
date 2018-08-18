@@ -54,16 +54,19 @@ class RegisterView(View):
 		if register_form.is_valid():
 			user_name = request.POST.get("email", "")
 			pass_word = request.POST.get("password", "")
-			user_profile = UserProfile()
-			user_profile.username = user_name
-			user_profile.email = user_name
-			user_profile.password = make_password(pass_word)
-			user_profile.is_active = False
-			user_profile.save()
-			# 发送邮件
-			send_register_email(user_name, "register")
-			# 返回login界面
-			return render(request, "login.html")
+			if not UserProfile.objects.get(email = user_name):
+				user_profile = UserProfile()
+				user_profile.username = user_name
+				user_profile.email = user_name
+				user_profile.password = make_password(pass_word)
+				user_profile.is_active = False
+				user_profile.save()
+				# 发送邮件
+				send_register_email(user_name, "register")
+				# 返回login界面
+				return render(request, "login.html")
+			else:
+				return render(request, "register.html", {'msg':"用户已存在！", 'register_form': register_form})
 		else:
 			return render(request, "register.html", {'register_form': register_form})
 
