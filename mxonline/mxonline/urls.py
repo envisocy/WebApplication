@@ -18,7 +18,7 @@ from django.urls import path, re_path
 from django.views.generic import TemplateView
 import xadmin
 
-from users.views import LoginView, RegisterView, ActiveUserView, ForgetPwdView, ResetView, ModifyPwdFrom
+from users.views import LoginView, RegisterView, ActiveUserView, ForgetPwdView, ResetView, ModifyPwdView
 from django.conf.urls import url, include
 
 urlpatterns = [
@@ -30,5 +30,5 @@ urlpatterns = [
     re_path('active/(?P<active_code>.*)/', ActiveUserView.as_view(), name="user_active"),
     path('forget/', ForgetPwdView.as_view(), name="forget_pwd" ),
     re_path('reset/(?P<active_code>.*)/', ResetView.as_view(), name="reset_pwd"),
-    path('modify_pwd/', ModifyPwdFrom.as_view(), name="modifypwd_pwd" ),
+    path('modify_pwd/', ModifyPwdView.as_view(), name="modify_pwd" ),
 ]

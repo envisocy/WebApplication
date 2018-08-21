@@ -5,7 +5,7 @@ from .models import UserProfile, EmailVerifyRecord
 from django.db.models import Q
 
 from django.views.generic.base import View
-from .forms import LoginForm, RegisterForm, ForgetForm, ModifyPwdFrom
+from .forms import LoginForm, RegisterForm, ForgetForm, ResetForm, ModifyPwdForm
 from django.contrib.auth.hashers import make_password   # 对明文进行密码加密
 from utils.email_send import send_register_email
 
@@ -55,7 +55,8 @@ class RegisterView(View):
 		if register_form.is_valid():
 			user_name = request.POST.get("email", "")
 			pass_word = request.POST.get("password", "")
-			if not UserProfile.objects.get(email = user_name):
+			print(UserProfile.objects)
+			if not UserProfile.objects.filter(email = user_name):
 				user_profile = UserProfile()
 				user_profile.username = user_name
 				user_profile.email = user_name
@@ -111,24 +112,26 @@ class ResetView(View):
 				return render(request, "password_reset.html", {"email": email}) # 需要传送email值，待下个页面传回
 		else:
 			return render(request, "forgetpwd.html", {"msg": "您的激活链接无效"})
-		
-		
+	
+
 class ModifyPwdView(View):
 	def post(self, request):
-		modifypwd_form = ModifyPwdFrom(request.POST)
-		if modifypwd_form.is_valid():
+		modify_form = ModifyPwdForm(request.POST)
+		if modify_form.is_valid():
 			pwd1 = request.POST.get("password1", "")
 			pwd2 = request.POST.get("password2", "")
 			email = request.POST.get("email", "")
 			if pwd1 != pwd2:
-				return render(request, "password_reset.html", {"email": email, "msg": "两次输入密码不一致"})
+				return render(request, "password_reset.html", {"email": email, "msg": "密码不一致！",
+				                                               "modify_form": modify_form})
 			user = UserProfile.objects.get(email=email)
 			user.password = make_password(pwd2)
 			user.save()
-			return render(request, "login.html", {"msg": "密码修改成功，请登录"})
+			return render(request, "login.html", {"msg": "密码修改成功"})
 		else:
 			email = request.POST.get("email", "")
-			return render(request, "password_reset.html", {"email": email, "modifypwd_form": modifypwd_form})
+			return render(request, "password_reset.html", {"email": email, "modify_form": modify_form})
+			
 		
 # Create your views here.
 
